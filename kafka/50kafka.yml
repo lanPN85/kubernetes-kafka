@@ -69,14 +69,18 @@ spec:
              command: ["sh", "-ce", "kill -s TERM 1; while $(kill -0 1 2>/dev/null); do sleep 1; done"]
         resources:
           requests:
-            cpu: 100m
-            memory: 100Mi
+            cpu: 200m
+            memory: 1Gi
           limits:
             # This limit was intentionally set low as a reminder that
             # the entire Yolean/kubernetes-kafka is meant to be tweaked
             # before you run production workloads
-            memory: 600Mi
+            memory: 2Gi
         readinessProbe:
+          tcpSocket:
+            port: 9092
+          timeoutSeconds: 1
+        livenessProbe:
           tcpSocket:
             port: 9092
           timeoutSeconds: 1
@@ -103,4 +107,4 @@ spec:
       storageClassName: standard
       resources:
         requests:
-          storage: 10Gi
+          storage: 20Gi
