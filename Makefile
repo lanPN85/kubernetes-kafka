@@ -1,9 +1,14 @@
 KUBE=kubectl -n=kafka
 
-pull-secrets:
-	gsutil rsync -R gs:// secrets/
+default:
 
-apply-secrets:
-	$(KUBE) create secret generic kafka-auth\
-		--from-file=secrets/kafka-user\
-		--from-file=secrets/kafka-password
+pull-secrets:
+	gsutil rsync -R gs://vdsense-bucket1/secrets/kafka ./secrets
+
+secrets:
+	kubectl apply -k secrets/
+
+kafka:
+	kubectl apply -k kafka/
+
+.PHONY: kafka pull-secrets secrets

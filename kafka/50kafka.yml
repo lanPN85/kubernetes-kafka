@@ -7,7 +7,7 @@ spec:
   selector:
     matchLabels:
       app: kafka
-  serviceName: "broker"
+  serviceName: broker
   replicas: 3
   updateStrategy:
     type: RollingUpdate
@@ -35,7 +35,11 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: metadata.namespace
-        command: ['/bin/bash', '/etc/kafka-configmap/init.sh']
+        - name: KAFKA_OPTS
+          value: -Djava.security.auth.login.config=/etc/kafka-secrets/kafka_server_jaas.conf
+        command:
+        - /bin/bash
+        - /etc/kafka-configmap/init.sh
         volumeMounts:
         - name: configmap
           mountPath: /etc/kafka-configmap
@@ -43,6 +47,9 @@ spec:
           mountPath: /etc/kafka
         - name: extensions
           mountPath: /opt/kafka/libs/extensions
+        - name: secrets
+          mountPath: /etc/kafka-secrets
+          readOnly: true
       containers:
       - name: broker
         image: solsson/kafka:2.3.0@sha256:b59603a8c0645f792fb54e9571500e975206352a021d6a116b110945ca6c3a1d
@@ -53,6 +60,8 @@ spec:
           value: -Dlog4j.configuration=file:/etc/kafka/log4j.properties
         - name: JMX_PORT
           value: "5555"
+        - name: KAFKA_OPTS
+          value: -Djava.security.auth.login.config=/etc/kafka-secrets/kafka_server_jaas.conf
         ports:
         - name: inside
           containerPort: 9092
@@ -66,15 +75,15 @@ spec:
         lifecycle:
           preStop:
             exec:
-             command: ["sh", "-ce", "kill -s TERM 1; while $(kill -0 1 2>/dev/null); do sleep 1; done"]
+              command:
+              - sh
+              - -ce
+              - kill -s TERM 1; while $(kill -0 1 2>/dev/null); do sleep 1; done
         resources:
           requests:
-            cpu: 200m
+            cpu: 100m
             memory: 1Gi
           limits:
-            # This limit was intentionally set low as a reminder that
-            # the entire Yolean/kubernetes-kafka is meant to be tweaked
-            # before you run production workloads
             memory: 2Gi
         readinessProbe:
           tcpSocket:
@@ -91,6 +100,9 @@ spec:
           mountPath: /var/lib/kafka/data
         - name: extensions
           mountPath: /opt/kafka/libs/extensions
+        - name: secrets
+          mountPath: /etc/kafka-secrets
+          readOnly: true
       volumes:
       - name: configmap
         configMap:
@@ -99,11 +111,15 @@ spec:
         emptyDir: {}
       - name: extensions
         emptyDir: {}
+      - name: secrets
+        secret:
+          secretName: kafka-secrets-7dctfdm9k6
   volumeClaimTemplates:
   - metadata:
       name: data
     spec:
-      accessModes: [ "ReadWriteOnce" ]
+      accessModes:
+      - ReadWriteOnce
       storageClassName: standard
       resources:
         requests:

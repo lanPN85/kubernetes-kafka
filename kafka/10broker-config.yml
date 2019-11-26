@@ -28,7 +28,7 @@ data:
 
       OUTSIDE_HOST=$(kubectl get node "$NODE_NAME" -o jsonpath='{.status.addresses[?(@.type=="ExternalIP")].address}')
       OUTSIDE_PORT=$((32400 + ${KAFKA_BROKER_ID}))
-      SEDS+=("s|#init#advertised.listeners=PLAINTEXT://#init#|advertised.listeners=PLAINTEXT://:9092,OUTSIDE://${OUTSIDE_HOST}:${OUTSIDE_PORT}|")
+      SEDS+=("s|#init#advertised.listeners=PLAINTEXT://#init#|advertised.listeners=INSIDE://:9092,OUTSIDE://${OUTSIDE_HOST}:${OUTSIDE_PORT}|")
       ANNOTATIONS="$ANNOTATIONS kafka-listener-outside-host=$OUTSIDE_HOST kafka-listener-outside-port=$OUTSIDE_PORT"
 
       if [ ! -z "$LABELS" ]; then
@@ -70,27 +70,16 @@ data:
 
     #init#broker.rack=#init#
 
-    ############################# Socket Server Settings #############################
-
-    # The address the socket server listens on. It will get the value returned from 
-    # java.net.InetAddress.getCanonicalHostName() if not configured.
-    #   FORMAT:
-    #     listeners = listener_name://host_name:port
-    #   EXAMPLE:
-    #     listeners = PLAINTEXT://your.host.name:9092
-    #listeners=PLAINTEXT://:9092
-    listeners=PLAINTEXT://:9092,OUTSIDE://:9094
-
-    # Hostname and port the broker will advertise to producers and consumers. If not set, 
-    # it uses the value for "listeners" if configured.  Otherwise, it will use the value
-    # returned from java.net.InetAddress.getCanonicalHostName().
-    # advertised.listeners=PLAINTEXT://34.102.215.177:9092
+    listeners=INSIDE://:9092,OUTSIDE://:9094
     #init#advertised.listeners=PLAINTEXT://#init#
 
     # Maps listener names to security protocols, the default is for them to be the same. See the config documentation for more details
     #listener.security.protocol.map=PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL
-    listener.security.protocol.map=PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL,OUTSIDE:PLAINTEXT
-    inter.broker.listener.name=PLAINTEXT
+    listener.security.protocol.map=PLAINTEXT:PLAINTEXT,SSL:SSL,SASL_PLAINTEXT:SASL_PLAINTEXT,SASL_SSL:SASL_SSL,OUTSIDE:SASL_PLAINTEXT, INSIDE:PLAINTEXT
+    inter.broker.listener.name=INSIDE
+    
+    sasl.enabled.mechanisms=PLAIN
+    # ssl.client.auth=required
 
     # The number of threads that the server uses for receiving requests from the network and sending responses to the network
     #num.network.threads=3
@@ -129,7 +118,7 @@ data:
     #log.flush.interval.messages=10000
 
     # The maximum amount of time a message can sit in a log before we force a flush
-    #log.flush.interval.ms=1000
+    log.flush.interval.ms=3000
 
     ############################# Log Retention Policy #############################
 
